@@ -1,0 +1,116 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.coordinatorlayout.widget.CoordinatorLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:fitsSystemWindows="true">
+
+    <!-- Título com margem aumentada -->
+    <TextView
+        android:id="@+id/txt_titulo"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="16dp"
+        android:layout_marginTop="16dp"
+        android:layout_marginEnd="16dp"
+        android:textAppearance="@style/TextAppearance.AppCompat.Headline"
+        android:textColor="@color/black"
+        android:visibility="gone"
+        app:layout_anchorGravity="top"/>
+
+    <LinearLayout
+        android:id="@+id/barra_compartilhamento"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="72dp"
+        android:orientation="horizontal"
+        android:layout_marginHorizontal="8dp"
+        android:gravity="center"
+        android:visibility="gone"
+        app:layout_behavior="@string/appbar_scrolling_view_behavior">
+
+        <!-- Todos os ícones usando a mesma cor definida em icon_tint.xml -->
+        <ImageButton
+            android:id="@+id/btn_whatsapp"
+            android:layout_width="40dp"
+            android:layout_height="40dp"
+            android:background="?android:attr/selectableItemBackgroundBorderless"
+            android:src="@drawable/ic_whatsapp"
+            android:contentDescription="WhatsApp"
+            android:tint="@color/black"
+            tools:ignore="NewApi" />
+
+        <ImageButton
+            android:id="@+id/btn_wechat"
+            android:layout_width="40dp"
+            android:layout_height="40dp"
+            android:layout_marginStart="8dp"
+            android:background="?android:attr/selectableItemBackgroundBorderless"
+            android:src="@drawable/ic_wechat"
+            android:contentDescription="WeChat"
+            android:tint="@color/black"
+            tools:targetApi="21" />
+
+        <ImageButton
+            android:id="@+id/btn_chatgpt"
+            android:layout_width="40dp"
+            android:layout_height="40dp"
+            android:layout_marginStart="8dp"
+            android:background="?android:attr/selectableItemBackgroundBorderless"
+            android:src="@drawable/ic_chatgpt"
+            android:contentDescription="ChatGPT"
+            android:tint="@color/black"
+            tools:targetApi="21" />
+
+        <ImageButton
+            android:id="@+id/btn_deepseek"
+            android:layout_width="40dp"
+            android:layout_height="40dp"
+            android:layout_marginStart="8dp"
+            android:background="?android:attr/selectableItemBackgroundBorderless"
+            android:src="@drawable/ic_deepseek"
+            android:contentDescription="DeepSeek"
+            android:tint="@color/black"
+            tools:targetApi="21" />
+    </LinearLayout>
+
+    <!-- Conteúdo -->
+    <androidx.core.widget.NestedScrollView
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:layout_marginTop="132dp"
+        android:paddingHorizontal="16dp"
+        android:paddingBottom="18dp"
+        app:layout_behavior="@string/appbar_scrolling_view_behavior">
+
+        <TextView
+            android:id="@+id/txt_conteudo"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:textSize="16sp"
+            android:lineSpacingMultiplier="1.25"
+            android:textColor="@color/black" />
+    </androidx.core.widget.NestedScrollView>
+
+    <!-- Erro -->
+    <TextView
+        android:id="@+id/txt_erro"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:gravity="center"
+        android:padding="24dp"
+        android:textColor="@color/black"
+        android:visibility="gone"/>
+
+    <!-- Loading: ProgressBar circular compatível -->
+    <ProgressBar
+        android:id="@+id/progress_circular"
+        style="?android:attr/progressBarStyleLarge"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="center"
+        android:visibility="gone" />
+
+</androidx.coordinatorlayout.widget.CoordinatorLayout>

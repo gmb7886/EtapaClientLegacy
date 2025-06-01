@@ -1,0 +1,252 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:background="@android:color/white">
+
+    <!-- Toolbar simplificada e compatível -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="?attr/actionBarSize"
+        android:background="?attr/colorPrimary"
+        android:orientation="horizontal"
+        android:gravity="center_vertical"
+        android:paddingStart="8dp">
+
+        <!-- Botão de voltar com fundo transparente -->
+        <ImageButton
+            android:id="@+id/btn_back"
+            android:layout_width="48dp"
+            android:layout_height="48dp"
+            android:src="@drawable/ic_arrow_back"
+            android:background="@drawable/btn_back_selector"
+            android:contentDescription="Voltar"
+            android:scaleType="centerInside"/>
+
+        <!-- Título centralizado verticalmente -->
+        <TextView
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="Configurações"
+            android:textColor="@android:color/white"
+            android:textSize="20sp"
+            android:textStyle="bold"
+            android:gravity="center_vertical"
+            android:paddingStart="8dp"/>
+    </LinearLayout>
+
+    <ScrollView
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:fillViewport="true"
+        android:padding="8dp">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:padding="16dp">
+
+            <!-- Seção: Atualizações -->
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="Atualizações"
+                android:textSize="18sp"
+                android:textStyle="bold"
+                android:textColor="@android:color/black"
+                android:layout_marginBottom="8dp"/>
+
+            <!-- Substituindo CardView por LinearLayout com borda -->
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:background="@drawable/bg_section"
+                android:layout_marginBottom="16dp">
+
+                <Button
+                    android:id="@+id/btn_check_update"
+                    style="@style/Widget.AppCompat.Button.Borderless"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:minHeight="48dp"
+                    android:gravity="start|center_vertical"
+                    android:padding="16dp"
+                    android:text="Verificar atualizações do app"
+                    android:textSize="16sp"
+                    android:textColor="@android:color/black"
+                    android:drawableLeft="@drawable/ic_update"
+                    android:drawablePadding="8dp"/>
+            </LinearLayout>
+
+            <!-- Seção: Dados -->
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="Dados"
+                android:textSize="18sp"
+                android:textStyle="bold"
+                android:textColor="@android:color/black"
+                android:layout_marginBottom="8dp"/>
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:background="@drawable/bg_section"
+                android:layout_marginBottom="16dp">
+
+                <Button
+                    android:id="@+id/btn_clear_data"
+                    style="@style/Widget.AppCompat.Button.Borderless"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:minHeight="48dp"
+                    android:gravity="start|center_vertical"
+                    android:padding="16dp"
+                    android:text="Limpar dados"
+                    android:textSize="16sp"
+                    android:textColor="@android:color/black"
+                    android:drawableLeft="@drawable/ic_delete_sweep"
+                    android:drawablePadding="8dp"/>
+            </LinearLayout>
+
+            <!-- Seção: Segurança -->
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="Segurança"
+                android:textSize="18sp"
+                android:textStyle="bold"
+                android:textColor="@android:color/black"
+                android:layout_marginBottom="8dp"/>
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:background="@drawable/bg_section"
+                android:layout_marginBottom="16dp">
+
+                <Button
+                    android:id="@+id/btn_clear_password"
+                    style="@style/Widget.AppCompat.Button.Borderless"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:minHeight="48dp"
+                    android:gravity="start|center_vertical"
+                    android:padding="16dp"
+                    android:text="Limpar senhas salvas"
+                    android:textSize="16sp"
+                    android:textColor="@android:color/black"
+                    android:drawableLeft="@drawable/ic_security"
+                    android:drawablePadding="8dp"/>
+            </LinearLayout>
+
+            <!-- Seção: Redes Sociais -->
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="Redes Sociais"
+                android:textSize="18sp"
+                android:textStyle="bold"
+                android:textColor="@android:color/black"
+                android:layout_marginBottom="8dp"/>
+
+            <!-- Twitter -->
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:background="@drawable/bg_section"
+                android:layout_marginBottom="8dp">
+
+                <Button
+                    android:id="@+id/btn_twitter"
+                    style="@style/Widget.AppCompat.Button.Borderless"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:minHeight="48dp"
+                    android:gravity="start|center_vertical"
+                    android:padding="16dp"
+                    android:text="Twitter"
+                    android:textSize="16sp"
+                    android:textColor="@android:color/black"
+                    android:drawableLeft="@drawable/ic_twitter"
+                    android:drawablePadding="8dp"/>
+            </LinearLayout>
+
+            <!-- Reddit -->
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:background="@drawable/bg_section"
+                android:layout_marginBottom="8dp">
+
+                <Button
+                    android:id="@+id/btn_reddit"
+                    style="@style/Widget.AppCompat.Button.Borderless"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:minHeight="48dp"
+                    android:gravity="start|center_vertical"
+                    android:padding="16dp"
+                    android:text="Reddit"
+                    android:textSize="16sp"
+                    android:textColor="@android:color/black"
+                    android:drawableLeft="@drawable/ic_reddit"
+                    android:drawablePadding="8dp"/>
+            </LinearLayout>
+
+            <!-- GitHub -->
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:background="@drawable/bg_section"
+                android:layout_marginBottom="8dp">
+
+                <Button
+                    android:id="@+id/btn_github"
+                    style="@style/Widget.AppCompat.Button.Borderless"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:minHeight="48dp"
+                    android:gravity="start|center_vertical"
+                    android:padding="16dp"
+                    android:text="GitHub"
+                    android:textSize="16sp"
+                    android:textColor="@android:color/black"
+                    android:drawableLeft="@drawable/ic_github"
+                    android:drawablePadding="8dp"/>
+            </LinearLayout>
+
+            <!-- YouTube -->
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:background="@drawable/bg_section"
+                android:layout_marginBottom="8dp">
+
+                <Button
+                    android:id="@+id/btn_youtube"
+                    style="@style/Widget.AppCompat.Button.Borderless"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:minHeight="48dp"
+                    android:gravity="start|center_vertical"
+                    android:padding="16dp"
+                    android:text="YouTube"
+                    android:textSize="16sp"
+                    android:textColor="@android:color/black"
+                    android:drawableLeft="@drawable/ic_youtube"
+                    android:drawablePadding="8dp"/>
+            </LinearLayout>
+        </LinearLayout>
+    </ScrollView>
+</LinearLayout>

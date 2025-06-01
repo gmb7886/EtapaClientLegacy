@@ -1,0 +1,4 @@
+<resources>
+    <dimen name="news_min_height">180dp</dimen>
+    <dimen name="carousel_margin">16dp</dimen>
+</resources>
