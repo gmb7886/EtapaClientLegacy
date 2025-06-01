@@ -4,6 +4,12 @@
 
 Meu cliente alternativo para acessar https://areaexclusiva.colegioetapa.com.br/ em dispositivos Android, com funcionalidades extras ao aplicativo original.
 
+⚠️ ATENÇÃO!
+
+Essa versão do app serve apenas como prova de conceito, ou seja, que é possível rodar um app atual em dispositivos Android 4.4 ou mais antigo. Não recomendo que use seriamente essa versão, está cheio de bugs que eu não vou corrigir....
+
+Além disso, o motor GeckoView exige alto poder de processamento para exibir as páginas além de aumentar o tamanho do app, algo que inviabilizou o uso em dispositivos antigos e low-end.
+
 <img src="https://github.com/gmb7886/EtapaClientLegacy/blob/master/app/imagens/legacy_4.png" width="180"/> <img src="https://github.com/gmb7886/EtapaClientLegacy/blob/master/app/imagens/legacy_1.png" width="180"/>
 <img src="https://github.com/gmb7886/EtapaClientLegacy/blob/master/app/imagens/legacy_2.png" width="180"/>  <img src="https://github.com/gmb7886/EtapaClientLegacy/blob/master/app/imagens/legacy_3.png" width="180"/> 
 
