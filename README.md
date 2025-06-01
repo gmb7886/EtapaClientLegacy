@@ -26,8 +26,9 @@ Além disso, o motor GeckoView exige alto poder de processamento para exibir as 
   9. Acesso a EADs antigos;
   10. Cálculo da média;
   11. Cache offline das notas, calendário, matérias de provas e horário de aula;
-  12. Notificação quando novas notas são cadastradas (funcional, mas apenas enquanto o app continuar logado)
-  13. Todas as funções do site....
+  12. Notificação quando novas notas são cadastradas (funcional, mas apenas enquanto o app continuar logado);
+  13. Resumos com IA (ChatGPT e Deepseek);
+  14. Todas as funções do site....
 
 🚫 A SER IMPLEMENTADO NO FUTURO:
   1. Login persistente (parcialmente corrigido, ainda é preciso logar novamente após algumas horas);
