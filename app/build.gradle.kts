@@ -9,7 +9,7 @@ android {
 
     defaultConfig {
         applicationId = "com.marinov.colegioetapalegacy"
-        minSdk = 18
+        minSdk = 19
         targetSdk = 19
         versionCode = 1
         versionName = "1.1"
