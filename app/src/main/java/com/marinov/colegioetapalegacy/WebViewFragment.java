@@ -17,22 +17,11 @@ import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
 import android.os.Environment;
-import android.os.Handler;
-import android.os.Looper;
 import android.provider.MediaStore;
 import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
-import android.webkit.CookieManager;
-import android.webkit.JavascriptInterface;
-import android.webkit.URLUtil;
-import android.webkit.WebChromeClient;
-import android.webkit.WebResourceError;
-import android.webkit.WebResourceRequest;
-import android.webkit.WebSettings;
-import android.webkit.WebView;
-import android.webkit.WebViewClient;
 import android.widget.Button;
 import android.widget.LinearLayout;
 import android.widget.Toast;
@@ -45,6 +34,10 @@ import androidx.core.app.NotificationManagerCompat;
 import androidx.core.content.ContextCompat;
 import androidx.fragment.app.Fragment;
 import androidx.fragment.app.FragmentManager;
+
+import org.mozilla.geckoview.GeckoRuntime;
+import org.mozilla.geckoview.GeckoSession;
+import org.mozilla.geckoview.GeckoView;
 
 import java.io.File;
 import java.io.FileOutputStream;
@@ -65,17 +58,22 @@ public class WebViewFragment extends Fragment {
     private static final String CHANNEL_ID = "download_channel";
     private static final int NOTIFICATION_ID = 1;
 
-    private WebView webView;
+    private GeckoView geckoView;
+    private GeckoRuntime geckoRuntime;
+    private GeckoSession geckoSession;
+    private boolean canGoBack = false;
+
     private LinearLayout layoutError;
     private LinearLayout layoutSemInternet;
-    private Button btnTentarNovamente; // Alterado para Button
+    private Button btnTentarNovamente;
     private SharedPreferences sharedPrefs;
 
     @Override
     public void onCreate(@Nullable Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setRetainInstance(true);
-        sharedPrefs = requireContext().getSharedPreferences(AUTOFILL_PREFS, Context.MODE_PRIVATE);
+        sharedPrefs = requireContext()
+                .getSharedPreferences(AUTOFILL_PREFS, Context.MODE_PRIVATE);
         createNotificationChannel();
     }
 
@@ -85,17 +83,18 @@ public class WebViewFragment extends Fragment {
     public View onCreateView(@NonNull LayoutInflater inflater,
                              @Nullable ViewGroup container,
                              @Nullable Bundle savedInstanceState) {
+
         View view = inflater.inflate(R.layout.fragment_webview, container, false);
 
         layoutError = view.findViewById(R.id.layout_sem_internet);
-        webView = view.findViewById(R.id.webview);
+        geckoView = view.findViewById(R.id.geckoview);
         layoutSemInternet = view.findViewById(R.id.layout_sem_internet);
         btnTentarNovamente = view.findViewById(R.id.btn_tentar_novamente);
 
         if (!isOnline()) {
             showNoInternetUI();
         } else {
-            initializeWebView();
+            initializeGeckoView();
         }
 
         return view;
@@ -104,11 +103,13 @@ public class WebViewFragment extends Fragment {
     @Override
     public void onViewCreated(@NonNull View view, @Nullable Bundle savedInstanceState) {
         super.onViewCreated(view, savedInstanceState);
+
+        // Botão “Voltar” do Android
         OnBackPressedCallback onBackPressedCallback = new OnBackPressedCallback(true) {
             @Override
             public void handleOnBackPressed() {
-                if (webView.canGoBack()) {
-                    webView.goBack();
+                if (canGoBack && geckoSession != null) {
+                    geckoSession.goBack();
                 } else {
                     requireActivity().getSupportFragmentManager().popBackStack();
                 }
@@ -118,26 +119,9 @@ public class WebViewFragment extends Fragment {
                 .addCallback(getViewLifecycleOwner(), onBackPressedCallback);
     }
 
-    class JsInterface {
-        @JavascriptInterface
-        public void saveCredentials(String user, String password) {
-            sharedPrefs.edit()
-                    .putString("user", user)
-                    .putString("password", password)
-                    .apply();
-        }
-
-        @JavascriptInterface
-        public String getSavedUser() {
-            return sharedPrefs.getString("user", "");
-        }
-
-        @JavascriptInterface
-        public String getSavedPassword() {
-            return sharedPrefs.getString("password", "");
-        }
-    }
-
+    /**
+     * Cria canal de notificação para downloads.
+     */
     private void createNotificationChannel() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             NotificationChannel channel = new NotificationChannel(
@@ -146,225 +130,257 @@ public class WebViewFragment extends Fragment {
                     NotificationManager.IMPORTANCE_LOW
             );
             channel.setDescription("Downloads");
-            NotificationManager mgr = requireContext().getSystemService(NotificationManager.class);
+            NotificationManager mgr =
+                    requireContext().getSystemService(NotificationManager.class);
             if (mgr != null) mgr.createNotificationChannel(channel);
         }
     }
 
+    /**
+     * Inicializa GeckoRuntime, GeckoSession e configura os delegates
+     * (Navigation, Progress, Content), sem ocultar nem animar o GeckoView.
+     */
     @SuppressLint("SetJavaScriptEnabled")
-    private void initializeWebView() {
-        webView.setVerticalScrollBarEnabled(false);
-        webView.setHorizontalScrollBarEnabled(false);
-        webView.setVisibility(View.INVISIBLE);
+    private void initializeGeckoView() {
+        // 1) Cria o GeckoRuntime (API ≥ 18)
+        geckoRuntime = GeckoRuntime.create(requireContext());
 
-        WebSettings settings = webView.getSettings();
-        settings.setJavaScriptEnabled(true);
-        settings.setDomStorageEnabled(true);
-        settings.setLoadWithOverviewMode(true);
-        settings.setUseWideViewPort(true);
-        settings.setBuiltInZoomControls(true);
-        settings.setDisplayZoomControls(false);
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
-            settings.setMixedContentMode(WebSettings.MIXED_CONTENT_ALWAYS_ALLOW);
-        }
+        // 2) Cria e abre a GeckoSession
+        geckoSession = new GeckoSession();
+        geckoSession.open(geckoRuntime);
 
-        webView.addJavascriptInterface(new JsInterface(), "AndroidAutofill");
-        setupWebViewSecurity();
-        restoreCookies();
-        checkStoragePermissions();
-
-        String initialUrl = getArguments() != null ? getArguments().getString(ARG_URL) : null;
-        if (initialUrl != null) {
-            webView.loadUrl(initialUrl);
-        }
-
-        webView.setWebChromeClient(new WebChromeClient());
-        webView.setWebViewClient(new WebViewClient() {
-            @Override
-            public void onPageFinished(WebView view, String url) {
-                saveCookies();
-                removeHeader(view);
-                injectAutoFillScript(view);
-
-                String jsCheck = "(function(){" +
-                        "var a = document.querySelector(\"#home_banners_carousel > div > div.carousel-item.active > a > img\");" +
-                        "var b = document.querySelector(\"#page-content-wrapper > div.d-lg-flex > div.container-fluid.p-3 > div.card.bg-transparent.border-0 > div:nth-child(4) > div.col-12.col-lg-8.mb-5 > div > div.d-flex.flex-column.h-100.mb-2 > div.card.border-radius-card.mb-3.border-blue\");" +
-                        "return (a!==null && b!==null).toString();" +
-                        "})()";
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.KITKAT) {
-                    view.evaluateJavascript(jsCheck, value -> {
-                        if ("true".equals(value.replace("\"", "")) && url.startsWith(HOME_PATH)) {
-                            closeHomeFragment();
-                            requireActivity().getSupportFragmentManager().popBackStack();
-                        }
-                    });
+        // 3) NavigationDelegate: intercepta “jsbridge://save” e rastreia canGoBack
+        geckoSession.setNavigationDelegate(new GeckoSession.NavigationDelegate() {
+            public boolean onLoadRequest(@NonNull GeckoSession session, @NonNull String uri) {
+                if (uri.startsWith("jsbridge://save")) {
+                    Uri parsed = Uri.parse(uri);
+                    String user = parsed.getQueryParameter("user");
+                    String pass = parsed.getQueryParameter("pass");
+                    if (user != null && pass != null) {
+                        sharedPrefs.edit()
+                                .putString("user", user)
+                                .putString("password", pass)
+                                .apply();
+                    }
+                    return true;
                 }
-
-                showWebViewWithAnimation(view);
-                layoutError.setVisibility(View.GONE);
-                layoutSemInternet.setVisibility(View.GONE);
+                if (uri.equals("jsbridge://closeHome")) {
+                    closeHomeFragment();
+                    requireActivity()
+                            .getSupportFragmentManager()
+                            .popBackStack();
+                    return true;
+                }
+                return false;
             }
 
             @Override
-            public void onReceivedError(WebView view, WebResourceRequest request, WebResourceError error) {
-                if (!isOnline()) showNoInternetUI();
+            public void onLocationChange(@NonNull GeckoSession session, @Nullable String uri) { }
+
+            public void onProgressChange(@NonNull GeckoSession session, int progress) { }
+
+            public void onSecurityChange(@NonNull GeckoSession session, int state) { }
+
+            @Override
+            public void onCanGoBack(@NonNull GeckoSession session, boolean canGoBackFlag) {
+                canGoBack = canGoBackFlag;
             }
 
             @Override
-            public void doUpdateVisitedHistory(WebView view, String url, boolean isReload) {
-                injectAutoFillScript(view);
-            }
+            public void onCanGoForward(@NonNull GeckoSession session, boolean canGoForwardFlag) { }
         });
 
-        configureDownloadListener();
+        // 4) ProgressDelegate: injeta CSS/JS e mostra o GeckoView sem ocultação
+        geckoSession.setProgressDelegate(new GeckoSession.ProgressDelegate() {
+            public void onLoadEnd(@NonNull GeckoSession session, @NonNull String uri) {
+                restoreCookies();
+                injectRemoveHeaderAndAutofill();
+                // simplesmente deixa o GeckoView visível (já é “visible” no XML)
+                layoutError.setVisibility(View.GONE);
+                layoutSemInternet.setVisibility(View.GONE);
+
+                if (uri.startsWith(HOME_PATH)) {
+                    String jsCheck =
+                            "(function(){" +
+                                    " var a = document.querySelector(\"#home_banners_carousel > div > div.carousel-item.active > a > img\");" +
+                                    " var b = document.querySelector(\"#page-content-wrapper > div.d-lg-flex > div.container-fluid.p-3 > div.card.bg-transparent;border-0 > div:nth-child(4) > div.col-12.col-lg-8.mb-5 > div > div.d-flex.flex-column.h-100.mb-2 > div.card.border-radius-card.mb-3.border-blue\");" +
+                                    " if(a!==null && b!==null) window.location.href='jsbridge://closeHome';" +
+                                    "})()";
+                    geckoSession.loadUri("javascript:" + jsCheck);
+                }
+            }
+
+            @Override
+            public void onPageStop(@NonNull GeckoSession session, boolean success) { }
+        });
+
+        // 5) ContentDelegate: captura pedidos de download
+        geckoSession.setContentDelegate(new GeckoSession.ContentDelegate() {
+            public void onDownloadRequested(@NonNull GeckoSession session,
+                                            @NonNull String url,
+                                            @Nullable String contentDisposition,
+                                            @Nullable String mimeType,
+                                            long contentLength) {
+                if (Build.VERSION.SDK_INT <= Build.VERSION_CODES.Q
+                        && ContextCompat.checkSelfPermission(requireContext(),
+                        Manifest.permission.WRITE_EXTERNAL_STORAGE)
+                        != PackageManager.PERMISSION_GRANTED) {
+                    return;
+                }
+                String cookies = android.webkit.CookieManager.getInstance().getCookie(url);
+                String referer = "";
+                String fileName = android.webkit.URLUtil.guessFileName(
+                        url, contentDisposition, mimeType);
+                downloadManually(url, fileName, cookies, referer, mimeType);
+            }
+
+            public void onShowBackgroundImage(@NonNull GeckoSession session, @NonNull String url) { }
+
+            public void onMediaBlocked(@NonNull GeckoSession session, @NonNull String url) { }
+
+            public void onContentLoaded(@NonNull GeckoSession session) { }
+
+            public void onCollectTelemetry(@NonNull GeckoSession session, @Nullable String data) { }
+
+            public void onContentIntent(@NonNull GeckoSession session, @NonNull String action,
+                                        @Nullable Uri uri, @Nullable String mimeType,
+                                        @Nullable String[] data, boolean isForeground) { }
+        });
+
+        // 6) Liga a sessão ao GeckoView
+        geckoView.setSession(geckoSession);
+
+        // 7) Carrega a URL inicial (sem ocultar nada)
+        String initialUrl = getArguments() != null
+                ? getArguments().getString(ARG_URL)
+                : null;
+        if (initialUrl != null) {
+            geckoSession.loadUri(initialUrl);
+        }
+
+        // 8) Ajustes de segurança (bloquear long-click, haptic feedback)
+        setupGeckoViewSecurity();
+
+        // 9) Solicita permissão de WRITE_EXTERNAL_STORAGE se necessário
+        checkStoragePermissions();
     }
 
-    private void injectAutoFillScript(WebView view) {
-        String script = "(function() {" +
-                "const observerConfig = { childList: true, subtree: true };" +
-                "const userFields = ['#matricula'];" +
-                "const passFields = ['#senha'];" +
-
-                "function setupAutofill() {" +
-                "   const userField = document.querySelector(userFields.join(', '));" +
-                "   const passField = document.querySelector(passFields.join(', '));" +
-
-                "   if (userField && passField) {" +
-                "       if (userField.value === '') {" +
-                "           userField.value = AndroidAutofill.getSavedUser();" +
-                "       }" +
-                "       if (passField.value === '') {" +
-                "           passField.value = AndroidAutofill.getSavedPassword();" +
-                "       }" +
-
-                "       function handleInput() {" +
-                "           AndroidAutofill.saveCredentials(userField.value, passField.value);" +
-                "       }" +
-
-                "       userField.addEventListener('input', handleInput);" +
-                "       passField.addEventListener('input', handleInput);" +
-                "       return true;" +
-                "   }" +
-                "   return false;" +
-                "}" +
-
-                "if (!setupAutofill()) {" +
-                "   const observer = new MutationObserver((mutations) => {" +
-                "       if (setupAutofill()) {" +
-                "           observer.disconnect();" +
-                "       }" +
-                "   });" +
-                "   observer.observe(document.body, observerConfig);" +
-                "}" +
-
-                "document.querySelectorAll('.nav-link').forEach(tab => {" +
-                "   tab.addEventListener('click', () => {" +
-                "       setTimeout(setupAutofill, 300);" +
-                "   });" +
-                "});" +
-                "})();";
-
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.KITKAT) {
-            view.evaluateJavascript(script, null);
+    /** Equivalente a CookieManager.flush() do WebView */
+    private void restoreCookies() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+            android.webkit.CookieManager.getInstance().flush();
         }
     }
 
-    private void removeHeader(WebView view) {
-        String js = "document.documentElement.style.webkitTouchCallout='none';" +
-                "document.documentElement.style.webkitUserSelect='none';" +
-                "var nav=document.querySelector('#page-content-wrapper > nav'); if(nav) nav.remove();" +
-                "var sidebar=document.querySelector('#sidebar-wrapper'); if(sidebar) sidebar.remove();" +
-                "var responsavelTab=document.querySelector('#responsavel-tab'); if(responsavelTab) responsavelTab.remove();" +
-                "var alunoTab=document.querySelector('#aluno-tab'); if(alunoTab) alunoTab.remove();" +
-                "var login=document.querySelector('#login'); if(login) login.remove();" +
-                "var cardElement=document.querySelector('body > div.row.mx-0.pt-4 > div > div.card.mt-4.border-radius-card.border-0.shadow'); if(cardElement) cardElement.remove();" +
-                "var style=document.createElement('style');" +
-                "style.type='text/css';" +
-                "style.appendChild(document.createTextNode('::-webkit-scrollbar{display:none;}'));" +
-                "document.head.appendChild(style);";
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.KITKAT) {
-            view.evaluateJavascript(js, null);
-        }
+    private void injectRemoveHeaderAndAutofill() {
+        String jsRemoveHeader =
+                "(function(){" +
+                        "document.documentElement.style.webkitTouchCallout='none';" +
+                        "document.documentElement.style.webkitUserSelect='none';" +
+                        "var nav = document.querySelector('#page-content-wrapper > nav'); if(nav) nav.remove();" +
+                        "var sidebar = document.querySelector('#sidebar-wrapper'); if(sidebar) sidebar.remove();" +
+                        "var responsavelTab = document.querySelector('#responsavel-tab'); if(responsavelTab) responsavelTab.remove();" +
+                        "var alunoTab = document.querySelector('#aluno-tab'); if(alunoTab) alunoTab.remove();" +
+                        "var login = document.querySelector('#login'); if(login) login.remove();" +
+                        "var cardElement = document.querySelector('body > div.row.mx-0.pt-4 > div > div.card.mt-4.border-radius-card.border-0.shadow'); if(cardElement) cardElement.remove();" +
+                        "var style = document.createElement('style');" +
+                        "style.type = 'text/css';" +
+                        "style.appendChild(document.createTextNode('::-webkit-scrollbar{display:none;}'));" +
+                        "document.head.appendChild(style);" +
+                        "})()";
+        geckoSession.loadUri("javascript:" + jsRemoveHeader);
+
+        String jsAutofill =
+                "(function(){" +
+                        "const observerConfig={childList:true,subtree:true};" +
+                        "const userFields=['#matricula'];" +
+                        "const passFields=['#senha'];" +
+                        "function setupAutofill(){" +
+                        "  const userField=document.querySelector(userFields.join(','));" +
+                        "  const passField=document.querySelector(passFields.join(','));" +
+                        "  if(userField&&passField){" +
+                        "    if(userField.value==='') userField.value='" + sharedPrefs.getString("user", "") + "';" +
+                        "    if(passField.value==='') passField.value='" + sharedPrefs.getString("password", "") + "';" +
+                        "    function handleInput(){" +
+                        "      const u=encodeURIComponent(userField.value);" +
+                        "      const p=encodeURIComponent(passField.value);" +
+                        "      window.location.href='jsbridge://save?user='+u+'&pass='+p;" +
+                        "    }" +
+                        "    userField.addEventListener('input',handleInput);" +
+                        "    passField.addEventListener('input',handleInput);" +
+                        "    return true;" +
+                        "  }" +
+                        "  return false;" +
+                        "}" +
+                        "if(!setupAutofill()){" +
+                        "  const observer=new MutationObserver((mutations)=>{ if(setupAutofill()) observer.disconnect(); });" +
+                        "  observer.observe(document.body,observerConfig);" +
+                        "}" +
+                        "document.querySelectorAll('.nav-link').forEach(tab=>{ tab.addEventListener('click',()=>{ setTimeout(setupAutofill,300); }); });" +
+                        "})()";
+        geckoSession.loadUri("javascript:" + jsAutofill);
     }
 
-    private void setupWebViewSecurity() {
-        webView.setOnLongClickListener(v -> true);
-        webView.setLongClickable(false);
-        webView.setHapticFeedbackEnabled(false);
-    }
-
-    private void showWebViewWithAnimation(WebView view) {
-        new Handler(Looper.getMainLooper()).postDelayed(() -> {
-            view.setAlpha(0f);
-            view.setVisibility(View.VISIBLE);
-            view.animate().alpha(1f).setDuration(300).start();
-        }, 100);
+    private void setupGeckoViewSecurity() {
+        geckoView.setClickable(true);
+        geckoView.setLongClickable(false);
+        geckoView.setHapticFeedbackEnabled(false);
     }
 
     private boolean isOnline() {
-        ConnectivityManager cm = (ConnectivityManager) requireContext().getSystemService(Context.CONNECTIVITY_SERVICE);
+        ConnectivityManager cm =
+                (ConnectivityManager) requireContext().getSystemService(Context.CONNECTIVITY_SERVICE);
         if (cm == null) return false;
-
         NetworkInfo info = cm.getActiveNetworkInfo();
         return info != null && info.isConnected();
     }
 
     private void showNoInternetUI() {
-        webView.setVisibility(View.GONE);
+        // não escondemos o GeckoView aqui—ele já está sempre visível
         layoutError.setVisibility(View.GONE);
         layoutSemInternet.setVisibility(View.VISIBLE);
         btnTentarNovamente.setOnClickListener(v -> {
             if (isOnline()) {
                 layoutSemInternet.setVisibility(View.GONE);
-                webView.reload();
+                if (geckoSession != null && geckoSession.isOpen()) {
+                    geckoSession.reload();
+                }
             } else {
-                Toast.makeText(requireContext(), "Sem conexão com a internet", Toast.LENGTH_SHORT).show();
+                Toast.makeText(requireContext(),
+                        "Sem conexão com a internet", Toast.LENGTH_SHORT).show();
             }
         });
-    }
-
-    private void restoreCookies() {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
-            CookieManager.getInstance().flush();
-        }
-    }
-
-    private void saveCookies() {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
-            CookieManager.getInstance().flush();
-        }
     }
 
     private void checkStoragePermissions() {
-        SharedPreferences prefs = requireContext().getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
-        if (Build.VERSION.SDK_INT <= Build.VERSION_CODES.Q && !prefs.getBoolean(KEY_ASKED_STORAGE, false)) {
+        SharedPreferences prefs =
+                requireContext().getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
+        if (Build.VERSION.SDK_INT <= Build.VERSION_CODES.Q
+                && !prefs.getBoolean(KEY_ASKED_STORAGE, false)) {
             prefs.edit().putBoolean(KEY_ASKED_STORAGE, true).apply();
-            if (ContextCompat.checkSelfPermission(requireContext(), Manifest.permission.WRITE_EXTERNAL_STORAGE)
+            if (ContextCompat.checkSelfPermission(requireContext(),
+                    Manifest.permission.WRITE_EXTERNAL_STORAGE)
                     != PackageManager.PERMISSION_GRANTED) {
-                requestPermissions(new String[]{Manifest.permission.WRITE_EXTERNAL_STORAGE}, REQUEST_STORAGE_PERMISSION);
+                requestPermissions(
+                        new String[]{Manifest.permission.WRITE_EXTERNAL_STORAGE},
+                        REQUEST_STORAGE_PERMISSION);
             }
         }
     }
 
-    private void configureDownloadListener() {
-        webView.setDownloadListener((url, userAgent, contentDisposition, mimeType, contentLength) -> {
-            if (Build.VERSION.SDK_INT <= Build.VERSION_CODES.Q && ContextCompat.checkSelfPermission(requireContext(), Manifest.permission.WRITE_EXTERNAL_STORAGE)
-                    != PackageManager.PERMISSION_GRANTED) return;
-            String cookies = CookieManager.getInstance().getCookie(url);
-            String referer = webView.getUrl();
-            String fileName = URLUtil.guessFileName(url, contentDisposition, mimeType);
-            downloadManually(url, fileName, cookies, userAgent, referer, mimeType);
-        });
-    }
-
-    private void downloadManually(String url, String fileName, String cookies, String userAgent, String referer, @Nullable String mimeType) {
+    private void downloadManually(String url,
+                                  String fileName,
+                                  String cookies,
+                                  String referer,
+                                  @Nullable String mimeType) {
         NotificationCompat.Builder notif = new NotificationCompat.Builder(requireContext(), CHANNEL_ID)
                 .setSmallIcon(android.R.drawable.stat_sys_download)
                 .setContentTitle("Download")
                 .setContentText("Baixando " + fileName)
                 .setPriority(NotificationCompat.PRIORITY_LOW)
                 .setOngoing(true);
-        NotificationManagerCompat.from(requireContext()).notify(NOTIFICATION_ID, notif.build());
+        NotificationManagerCompat.from(requireContext())
+                .notify(NOTIFICATION_ID, notif.build());
 
         Executors.newSingleThreadExecutor().execute(() -> {
             HttpURLConnection conn = null;
@@ -376,7 +392,7 @@ public class WebViewFragment extends Fragment {
                 conn = (HttpURLConnection) u.openConnection();
                 conn.setInstanceFollowRedirects(false);
                 conn.setRequestProperty("Cookie", cookies);
-                conn.setRequestProperty("User-Agent", userAgent);
+                conn.setRequestProperty("User-Agent", System.getProperty("http.agent"));
                 conn.setRequestProperty("Referer", referer);
                 conn.connect();
 
@@ -384,10 +400,12 @@ public class WebViewFragment extends Fragment {
                 if (code / 100 == 3) {
                     String loc = conn.getHeaderField("Location");
                     conn.disconnect();
-                    downloadManually(loc, fileName, cookies, userAgent, referer, mimeType);
+                    downloadManually(loc, fileName, cookies, referer, mimeType);
                     return;
                 }
-                if (code != HttpURLConnection.HTTP_OK) throw new IOException("HTTP " + code);
+                if (code != HttpURLConnection.HTTP_OK) {
+                    throw new IOException("HTTP " + code);
+                }
 
                 in = conn.getInputStream();
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
@@ -399,30 +417,38 @@ public class WebViewFragment extends Fragment {
                             .insert(MediaStore.Downloads.EXTERNAL_CONTENT_URI, values);
                     out = requireContext().getContentResolver().openOutputStream(targetUri);
                 } else {
-                    File dir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS);
+                    File dir = Environment.getExternalStoragePublicDirectory(
+                            Environment.DIRECTORY_DOWNLOADS);
                     File outFile = new File(dir, fileName);
                     out = new FileOutputStream(outFile);
                     targetUri = Uri.fromFile(outFile);
                 }
+
                 byte[] buffer = new byte[8192];
                 int len;
-                while ((len = in.read(buffer)) != -1) out.write(buffer, 0, len);
+                while ((len = in.read(buffer)) != -1) {
+                    out.write(buffer, 0, len);
+                }
                 if (out != null) out.flush();
 
                 Intent openIntent = new Intent(Intent.ACTION_VIEW);
-                openIntent.setDataAndType(targetUri, mimeType != null ? mimeType : "*/*");
+                openIntent.setDataAndType(targetUri,
+                        mimeType != null ? mimeType : "*/*");
                 openIntent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
-                PendingIntent pi = PendingIntent.getActivity(requireContext(), 0, openIntent,
-                        PendingIntent.FLAG_UPDATE_CURRENT);
+                PendingIntent pi = PendingIntent.getActivity(
+                        requireContext(), 0, openIntent, PendingIntent.FLAG_UPDATE_CURRENT);
 
                 notif.setContentText("Concluído: " + fileName)
                         .setSmallIcon(android.R.drawable.stat_sys_download_done)
                         .setContentIntent(pi)
                         .setOngoing(false)
                         .setAutoCancel(true);
-                NotificationManagerCompat.from(requireContext()).notify(NOTIFICATION_ID, notif.build());
+                NotificationManagerCompat.from(requireContext())
+                        .notify(NOTIFICATION_ID, notif.build());
+
                 if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) {
-                    requireContext().sendBroadcast(new Intent(Intent.ACTION_MEDIA_SCANNER_SCAN_FILE, targetUri));
+                    requireContext().sendBroadcast(
+                            new Intent(Intent.ACTION_MEDIA_SCANNER_SCAN_FILE, targetUri));
                 }
             } catch (Exception e) {
                 Log.e("DownloadManual", "erro", e);
@@ -430,11 +456,16 @@ public class WebViewFragment extends Fragment {
                         .setSmallIcon(android.R.drawable.stat_notify_error)
                         .setOngoing(false)
                         .setAutoCancel(true);
-                NotificationManagerCompat.from(requireContext()).notify(NOTIFICATION_ID, notif.build());
+                NotificationManagerCompat.from(requireContext())
+                        .notify(NOTIFICATION_ID, notif.build());
             } finally {
                 if (conn != null) conn.disconnect();
-                try { if (in != null) in.close(); } catch (IOException ignored) {}
-                try { if (out != null) out.close(); } catch (IOException ignored) {}
+                try {
+                    if (in != null) in.close();
+                } catch (IOException ignored) {}
+                try {
+                    if (out != null) out.close();
+                } catch (IOException ignored) {}
             }
         });
     }
@@ -442,26 +473,32 @@ public class WebViewFragment extends Fragment {
     @Override
     public void onConfigurationChanged(@NonNull Configuration newConfig) {
         super.onConfigurationChanged(newConfig);
-        if (webView != null) {
-            webView.reload();
+        if (geckoSession != null) {
+            geckoSession.reload();
         }
     }
 
     @Override
     public void onDestroyView() {
-        if (webView != null) {
-            webView.destroy();
-            webView = null;
+        if (geckoSession != null) {
+            geckoSession.close();
+            geckoSession = null;
+        }
+        if (geckoView != null) {
+            geckoView.setSession(null);
+            geckoView = null;
         }
         super.onDestroyView();
     }
 
+    /** Cria um Bundle com a URL para instanciar este fragmento. */
     public static Bundle createArgs(String url) {
         Bundle b = new Bundle();
         b.putString(ARG_URL, url);
         return b;
     }
 
+    /** Procura HomeFragment na stack e chama killFragment() nele. */
     private void closeHomeFragment() {
         FragmentManager fm = requireActivity().getSupportFragmentManager();
         for (Fragment fragment : fm.getFragments()) {

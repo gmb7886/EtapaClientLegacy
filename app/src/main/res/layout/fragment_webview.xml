@@ -42,7 +42,7 @@
                 android:layout_height="0dp"
                 android:layout_weight="1"/>
 
-            <!-- Substituído por Button padrão -->
+            <!-- Botão “Fazer Login” (permanece igual) -->
             <Button
                 android:id="@+id/btnLogin"
                 android:layout_width="wrap_content"
@@ -85,7 +85,6 @@
                     android:textSize="20sp"
                     android:textStyle="bold"/>
 
-                <!-- Substituído por Button padrão -->
                 <Button
                     android:id="@+id/btn_tentar_novamente"
                     android:layout_width="wrap_content"
@@ -95,16 +94,17 @@
                     android:background="?android:attr/selectableItemBackground"/>
             </LinearLayout>
 
-            <WebView
-                android:id="@+id/webview"
+            <!-- Aqui trocamos o <WebView> por <GeckoView> -->
+            <org.mozilla.geckoview.GeckoView
+                android:id="@+id/geckoview"
                 android:layout_width="0dp"
                 android:layout_height="0dp"
-                android:visibility="invisible"
                 app:layout_constraintTop_toTopOf="parent"
                 app:layout_constraintBottom_toBottomOf="parent"
                 app:layout_constraintStart_toStartOf="parent"
                 app:layout_constraintEnd_toEndOf="parent"/>
 
+            <!-- Container para conteúdos em tela cheia (vídeos, etc.) -->
             <FrameLayout
                 android:id="@+id/fullscreen_container"
                 android:layout_width="match_parent"

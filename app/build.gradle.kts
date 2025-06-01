@@ -9,11 +9,12 @@ android {
 
     defaultConfig {
         applicationId = "com.marinov.colegioetapalegacy"
-        minSdk = 14
+        minSdk = 18
         targetSdk = 19
         versionCode = 1
-        versionName = "1.0"
+        versionName = "1.1"
         multiDexEnabled = true
+        android.buildFeatures.buildConfig = true
         buildConfigField("String", "EAD_URL", "\"${project.properties["EAD_URL"]}\"")
         buildConfigField("String", "GITHUB_PAT", "\"${project.properties["GITHUB_PAT"]}\"")
     }
@@ -28,17 +29,18 @@ android {
         }
     }
     compileOptions {
-        sourceCompatibility = JavaVersion.VERSION_11
-        targetCompatibility = JavaVersion.VERSION_11
-    }
-    buildFeatures {
-        viewBinding = true
-        android.buildFeatures.buildConfig = true
+        sourceCompatibility = JavaVersion.VERSION_17
+        targetCompatibility = JavaVersion.VERSION_17
     }
     kotlinOptions {
-        jvmTarget = "11"
+        jvmTarget = "17"
+    }
+
+    buildFeatures {
+        viewBinding = true
     }
 }
+
 
 dependencies {
     // Bibliotecas de UI compatíveis com API 19
@@ -52,7 +54,7 @@ dependencies {
 
     // WebView compatível
     implementation("androidx.webkit:webkit:1.4.0")
-
+    implementation("org.mozilla.geckoview:geckoview:100.0.20220425210429")
     // Core e utilitários
     implementation("androidx.core:core-ktx:1.6.0")
     implementation("androidx.work:work-runtime-ktx:2.7.1") // Versão compatível com API 19

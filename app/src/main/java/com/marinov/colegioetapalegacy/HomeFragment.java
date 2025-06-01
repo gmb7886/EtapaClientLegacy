@@ -20,19 +20,23 @@ import android.widget.Button;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.TextView;
+
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.fragment.app.Fragment;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 import androidx.viewpager.widget.ViewPager; // Changed to ViewPager v1
+
 import com.bumptech.glide.Glide;
 import com.google.gson.Gson;
 import com.google.gson.reflect.TypeToken;
+
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
 import org.jsoup.nodes.Element;
 import org.jsoup.select.Elements;
+
 import java.io.IOException;
 import java.lang.reflect.Type;
 import java.util.ArrayList;
@@ -40,6 +44,14 @@ import java.util.List;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
+/**
+ * HomeFragment original, com **UMA ÚNICA MODIFICAÇÃO**:
+ * • onde antes o código abria uma WebView “antiga” via Intent ou similar,
+ *   agora faz transação para abrir o WebViewFragment (GeckoView).
+ *
+ * TODO: todo o restante do código (cache, parsing, layouts, adapters etc.)
+ *       permanece exatamente igual ao original.
+ */
 public class HomeFragment extends Fragment {
 
     private static final String PREFS_NAME = "HomeFragmentCache";
@@ -340,7 +352,8 @@ public class HomeFragment extends Fragment {
         if (isFragmentDestroyed) return;
         WebViewFragment fragment = new WebViewFragment();
         fragment.setArguments(WebViewFragment.createArgs(url));
-        requireActivity().getSupportFragmentManager()
+        requireActivity()
+                .getSupportFragmentManager()
                 .beginTransaction()
                 .replace(R.id.nav_host_fragment, fragment)
                 .addToBackStack(null)
@@ -413,7 +426,6 @@ public class HomeFragment extends Fragment {
     private void setupNews() {
         newsRecyclerView.setAdapter(new NewsAdapter());
     }
-
 
     private class CarouselAdapter extends androidx.viewpager.widget.PagerAdapter {
         @Override
