@@ -104,7 +104,7 @@ public class WebViewFragment extends Fragment {
     public void onViewCreated(@NonNull View view, @Nullable Bundle savedInstanceState) {
         super.onViewCreated(view, savedInstanceState);
 
-        // Botão “Voltar” do Android
+        // Botão "Voltar" do Android
         OnBackPressedCallback onBackPressedCallback = new OnBackPressedCallback(true) {
             @Override
             public void handleOnBackPressed() {
@@ -149,7 +149,7 @@ public class WebViewFragment extends Fragment {
         geckoSession = new GeckoSession();
         geckoSession.open(geckoRuntime);
 
-        // 3) NavigationDelegate: intercepta “jsbridge://save” e rastreia canGoBack
+        // 3) NavigationDelegate: intercepta "jsbridge://save" e rastreia canGoBack
         geckoSession.setNavigationDelegate(new GeckoSession.NavigationDelegate() {
             public boolean onLoadRequest(@NonNull GeckoSession session, @NonNull String uri) {
                 if (uri.startsWith("jsbridge://save")) {
@@ -195,7 +195,7 @@ public class WebViewFragment extends Fragment {
             public void onLoadEnd(@NonNull GeckoSession session, @NonNull String uri) {
                 restoreCookies();
                 injectRemoveHeaderAndAutofill();
-                // simplesmente deixa o GeckoView visível (já é “visible” no XML)
+                // simplesmente deixa o GeckoView visível (já é "visible" no XML)
                 layoutError.setVisibility(View.GONE);
                 layoutSemInternet.setVisibility(View.GONE);
 
@@ -273,6 +273,7 @@ public class WebViewFragment extends Fragment {
     }
 
     private void injectRemoveHeaderAndAutofill() {
+        // Script de remoção de elementos
         String jsRemoveHeader =
                 "(function(){" +
                         "document.documentElement.style.webkitTouchCallout='none';" +
@@ -288,37 +289,49 @@ public class WebViewFragment extends Fragment {
                         "style.appendChild(document.createTextNode('::-webkit-scrollbar{display:none;}'));" +
                         "document.head.appendChild(style);" +
                         "})()";
-        geckoSession.loadUri("javascript:" + jsRemoveHeader);
 
+        // Obtém credenciais salvas
+        String user = sharedPrefs.getString("user", "");
+        String pass = sharedPrefs.getString("password", "");
+
+        // Escapar caracteres especiais
+        String escapedUser = user.replace("\\", "\\\\").replace("'", "\\'");
+        String escapedPass = pass.replace("\\", "\\\\").replace("'", "\\'");
+
+        // Script de autofill com MutationObserver
         String jsAutofill =
                 "(function(){" +
-                        "const observerConfig={childList:true,subtree:true};" +
-                        "const userFields=['#matricula'];" +
-                        "const passFields=['#senha'];" +
-                        "function setupAutofill(){" +
-                        "  const userField=document.querySelector(userFields.join(','));" +
-                        "  const passField=document.querySelector(passFields.join(','));" +
-                        "  if(userField&&passField){" +
-                        "    if(userField.value==='') userField.value='" + sharedPrefs.getString("user", "") + "';" +
-                        "    if(passField.value==='') passField.value='" + sharedPrefs.getString("password", "") + "';" +
-                        "    function handleInput(){" +
-                        "      const u=encodeURIComponent(userField.value);" +
-                        "      const p=encodeURIComponent(passField.value);" +
-                        "      window.location.href='jsbridge://save?user='+u+'&pass='+p;" +
-                        "    }" +
-                        "    userField.addEventListener('input',handleInput);" +
-                        "    passField.addEventListener('input',handleInput);" +
-                        "    return true;" +
-                        "  }" +
-                        "  return false;" +
-                        "}" +
-                        "if(!setupAutofill()){" +
-                        "  const observer=new MutationObserver((mutations)=>{ if(setupAutofill()) observer.disconnect(); });" +
-                        "  observer.observe(document.body,observerConfig);" +
-                        "}" +
-                        "document.querySelectorAll('.nav-link').forEach(tab=>{ tab.addEventListener('click',()=>{ setTimeout(setupAutofill,300); }); });" +
+                        "   const observerConfig={childList:true,subtree:true};" +
+                        "   const userFields=['#matricula'];" +
+                        "   const passFields=['#senha'];" +
+                        "   function setupAutofill(){" +
+                        "       const userField=document.querySelector(userFields.join(','));" +
+                        "       const passField=document.querySelector(passFields.join(','));" +
+                        "       if(userField&&passField){" +
+                        "           if(userField.value==='') userField.value='" + escapedUser + "';" +
+                        "           if(passField.value==='') passField.value='" + escapedPass + "';" +
+                        "           function handleInput(){" +
+                        "               const u=encodeURIComponent(userField.value);" +
+                        "               const p=encodeURIComponent(passField.value);" +
+                        "               window.location.href='jsbridge://save?user='+u+'&pass='+p;" +
+                        "           }" +
+                        "           userField.addEventListener('input',handleInput);" +
+                        "           passField.addEventListener('input',handleInput);" +
+                        "           return true;" +
+                        "       }" +
+                        "       return false;" +
+                        "   }" +
+                        "   if(!setupAutofill()){" +
+                        "       const observer=new MutationObserver((mutations)=>{ if(setupAutofill()) observer.disconnect(); });" +
+                        "       observer.observe(document.body,observerConfig);" +
+                        "   }" +
+                        "   document.querySelectorAll('.nav-link').forEach(tab=>{" +
+                        "       tab.addEventListener('click',()=>{ setTimeout(setupAutofill,300); });" +
+                        "   });" +
                         "})()";
-        geckoSession.loadUri("javascript:" + jsAutofill);
+
+        // Executa ambos os scripts
+        geckoSession.loadUri("javascript:" + jsRemoveHeader + jsAutofill);
     }
 
     private void setupGeckoViewSecurity() {
@@ -336,7 +349,6 @@ public class WebViewFragment extends Fragment {
     }
 
     private void showNoInternetUI() {
-        // não escondemos o GeckoView aqui—ele já está sempre visível
         layoutError.setVisibility(View.GONE);
         layoutSemInternet.setVisibility(View.VISIBLE);
         btnTentarNovamente.setOnClickListener(v -> {
